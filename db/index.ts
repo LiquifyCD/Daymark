@@ -1,14 +1,22 @@
 import { env } from "cloudflare:workers";
-import { drizzle } from "drizzle-orm/d1";
+import { createClient } from "@libsql/client/web";
+import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 
 export function getDb() {
-  const runtimeEnv = env as typeof env & { DB?: D1Database };
-  if (!runtimeEnv.DB) {
+  const runtimeEnv = env as typeof env & {
+    TURSO_DATABASE_URL?: string;
+    TURSO_AUTH_TOKEN?: string;
+  };
+  if (!runtimeEnv.TURSO_DATABASE_URL || !runtimeEnv.TURSO_AUTH_TOKEN) {
     throw new Error(
-      "Cloudflare D1 binding `DB` is unavailable. Set the `d1` field in .openai/hosting.json to `DB` or let your control plane inject the real binding values before using the database."
+      "Turso is not configured. Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in the runtime environment.",
     );
   }
 
-  return drizzle(runtimeEnv.DB, { schema });
+  const client = createClient({
+    url: runtimeEnv.TURSO_DATABASE_URL,
+    authToken: runtimeEnv.TURSO_AUTH_TOKEN,
+  });
+  return drizzle(client, { schema });
 }

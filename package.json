@@ -11,9 +11,12 @@
     "start": "set \"WRANGLER_LOG_PATH=.wrangler/wrangler.log\" && vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@libsql/client": "0.15.15",
+    "dotenv": "17.2.3",
     "drizzle-orm": "0.45.2",
     "next": "^16.2.12",
     "react": "19.2.6",
@@ -40,7 +43,8 @@
   },
   "overrides": {
     "postcss": "8.5.25",
-    "sharp": "0.35.3"
+    "sharp": "0.35.3",
+    "ws": "8.21.1"
   },
   "type": "module"
 }

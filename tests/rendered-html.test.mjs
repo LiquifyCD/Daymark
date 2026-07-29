@@ -26,12 +26,17 @@ test("ships an installable manifest and versioned offline shell", async () => {
   assert.doesNotMatch(sw, /cache\.put\("\/"/);
 });
 
-test("enforces per-user, per-day check-ins", async () => {
-  const [schema, checkinRoute] = await Promise.all([
+test("enforces per-user, per-day check-ins with Turso", async () => {
+  const [schema, checkinRoute, database, hosting] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/habits/[id]/checkins/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
   ]);
   assert.match(schema, /checkins_habit_day_unique/);
   assert.match(checkinRoute, /eq\(habits\.owner,\s*user\.email\)/);
   assert.match(checkinRoute, /onConflictDoNothing/);
+  assert.match(database, /@libsql\/client\/web/);
+  assert.match(database, /TURSO_DATABASE_URL/);
+  assert.equal(JSON.parse(hosting).d1, null);
 });
