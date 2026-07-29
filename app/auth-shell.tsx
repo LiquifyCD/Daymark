@@ -90,7 +90,7 @@ export function AuthShell() {
         <form className="device-login" onSubmit={signIn}>
           <label>
             Username
-            <input name="username" type="text" autoComplete="username" defaultValue="Liquify" required />
+            <input name="username" type="text" autoComplete="off" autoCapitalize="none" spellCheck={false} required />
           </label>
           <label>
             Password
