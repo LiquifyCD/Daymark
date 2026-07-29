@@ -3,6 +3,8 @@ import { createClient } from "@libsql/client/web";
 interface Env {
   TURSO_DATABASE_URL: string;
   TURSO_AUTH_TOKEN: string;
+  DAYMARK_PASSWORD: string;
+  SESSION_SECRET: string;
 }
 
 const ALLOWED_ORIGINS = new Set([
@@ -11,11 +13,15 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 const ALLOWED_ICONS = new Set(["💧", "✦", "☀️", "🌿", "📖", "🏃"]);
 
+const USERNAME = "Liquify";
+const OWNER = "liquify";
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+
 function cors(request: Request) {
   const origin = request.headers.get("origin") || "";
   return {
     "access-control-allow-origin": ALLOWED_ORIGINS.has(origin) ? origin : "https://liquifycd.github.io",
-    "access-control-allow-headers": "content-type,x-daymark-key",
+    "access-control-allow-headers": "authorization,content-type",
     "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
     "access-control-max-age": "86400",
     vary: "Origin",
@@ -26,11 +32,66 @@ function json(request: Request, body: unknown, status = 200) {
   return Response.json(body, { status, headers: cors(request) });
 }
 
-async function ownerFor(request: Request) {
-  const key = request.headers.get("x-daymark-key") || "";
-  if (key.length < 32 || key.length > 256) return null;
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key));
-  return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
+function encodeBase64Url(bytes: Uint8Array) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+}
+
+function decodeBase64Url(value: string) {
+  const base64 = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+}
+
+async function signingKey(secret: string) {
+  return crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"],
+  );
+}
+
+async function createSession(secret: string) {
+  const payload = encodeBase64Url(new TextEncoder().encode(JSON.stringify({
+    sub: OWNER,
+    exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
+  })));
+  const signature = await crypto.subtle.sign("HMAC", await signingKey(secret), new TextEncoder().encode(payload));
+  return `${payload}.${encodeBase64Url(new Uint8Array(signature))}`;
+}
+
+async function validSession(request: Request, secret: string) {
+  const authorization = request.headers.get("authorization") || "";
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return false;
+  try {
+    const valid = await crypto.subtle.verify(
+      "HMAC",
+      await signingKey(secret),
+      decodeBase64Url(signature),
+      new TextEncoder().encode(payload),
+    );
+    if (!valid) return false;
+    const claims = JSON.parse(new TextDecoder().decode(decodeBase64Url(payload))) as { sub?: unknown; exp?: unknown };
+    return claims.sub === OWNER && typeof claims.exp === "number" && claims.exp > Date.now() / 1000;
+  } catch {
+    return false;
+  }
+}
+
+async function sameSecret(left: string, right: string) {
+  const [leftHash, rightHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(left)),
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(right)),
+  ]);
+  const leftBytes = new Uint8Array(leftHash);
+  const rightBytes = new Uint8Array(rightHash);
+  let difference = leftBytes.length ^ rightBytes.length;
+  for (let index = 0; index < leftBytes.length; index += 1) difference |= leftBytes[index] ^ rightBytes[index];
+  return difference === 0;
 }
 
 function currentDate(timezone: string) {
@@ -54,8 +115,18 @@ const worker = {
     const url = new URL(request.url);
     if (url.pathname === "/health") return json(request, { ok: true });
 
-    const owner = await ownerFor(request);
-    if (!owner) return json(request, { error: "Unauthorized" }, 401);
+    if (url.pathname === "/login" && request.method === "POST") {
+      const payload = await request.json().catch(() => ({})) as { username?: unknown; password?: unknown };
+      const username = typeof payload.username === "string" ? payload.username : "";
+      const password = typeof payload.password === "string" ? payload.password : "";
+      if (username !== USERNAME || !(await sameSecret(password, env.DAYMARK_PASSWORD))) {
+        return json(request, { error: "Invalid username or password" }, 401);
+      }
+      return json(request, { token: await createSession(env.SESSION_SECRET), username: USERNAME });
+    }
+
+    if (!(await validSession(request, env.SESSION_SECRET))) return json(request, { error: "Unauthorized" }, 401);
+    const owner = OWNER;
     const db = createClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
 
     if (url.pathname === "/habits" && request.method === "GET") {

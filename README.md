@@ -9,10 +9,11 @@ An iPhone-ready daily check-in PWA hosted on GitHub Pages.
 - GitHub Pages hosts the static purple No-Comment app.
 - A small Cloudflare Worker provides the API.
 - Turso stores promises and check-ins.
-- A random account key is hashed before it is used as the database owner ID.
+- One private account signs in through the Worker and receives a time-limited signed session.
 - The Turso token stays in the Worker and is never shipped to the browser.
 
-The account key can be copied from the profile card and reused on another device.
+The username is fixed to `Liquify`. The password and session-signing key are
+stored only as Cloudflare Worker secrets.
 
 ## Local development
 

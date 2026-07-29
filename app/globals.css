@@ -138,6 +138,7 @@ a { color: inherit; text-decoration: none; }
 .device-login input:focus { border-color: #a651ef; box-shadow: 0 0 0 3px rgba(166,81,239,.12); }
 .device-login details { color: #9f91ad; font-size: 12px; }
 .device-login summary { cursor: pointer; margin-bottom: 10px; }
+.login-error { padding: 10px 12px; border: 1px solid rgba(255,112,151,.25); border-radius: 12px; background: rgba(116,33,64,.22); color: #ffc4d5; font-size: 12px; text-align: left; }
 
 .app-shell {
   position: relative;

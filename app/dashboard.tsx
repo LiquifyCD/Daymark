@@ -59,11 +59,11 @@ function getStreak(checkins: Checkin[], habitId: number, today: string) {
 
 export function Dashboard({
   user,
-  accessKey,
+  session,
   onSignOut,
 }: {
   user: { name: string };
-  accessKey: string;
+  session: string;
   onSignOut: () => void;
 }) {
   const [data, setData] = useState<ApiState>(EMPTY_STATE);
@@ -79,9 +79,9 @@ export function Dashboard({
   );
   const apiFetch = useCallback((path: string, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
-    headers.set("x-daymark-key", accessKey);
+    headers.set("authorization", `Bearer ${session}`);
     return fetch(`${API_BASE}${path}`, { ...init, headers });
-  }, [accessKey]);
+  }, [session]);
 
   const load = useCallback(async () => {
     try {
@@ -173,10 +173,6 @@ export function Dashboard({
       return;
     }
     setShowInstall(true);
-  }
-
-  async function copyAccountKey() {
-    await navigator.clipboard.writeText(accessKey);
   }
 
   const week = Array.from({ length: 7 }, (_, index) => {
@@ -294,10 +290,9 @@ export function Dashboard({
             <div className="avatar">{user.name.slice(0, 1).toUpperCase()}</div>
             <div>
               <strong>{user.name}</strong>
-              <span>Private Turso profile</span>
+              <span>Single-user account</span>
             </div>
             <div className="identity-actions">
-              <button className="text-button" type="button" onClick={copyAccountKey}>Copy key</button>
               <button className="text-button" type="button" onClick={onSignOut}>Sign out</button>
             </div>
           </div>

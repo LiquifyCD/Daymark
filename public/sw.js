@@ -1,4 +1,4 @@
-const CACHE = "daymark-shell-v3";
+const CACHE = "daymark-shell-v4";
 const BASE = "/Daymark";
 const SHELL = [
   `${BASE}/offline.html`,

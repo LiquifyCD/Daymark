@@ -3,49 +3,56 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Dashboard } from "./dashboard";
 
-const KEY_STORAGE = "daymark-access-key";
-const NAME_STORAGE = "daymark-name";
+const SESSION_STORAGE = "daymark-session";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-
-function newAccessKey() {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
-}
+const API_BASE = "https://daymark-api.liquifycd.workers.dev";
 
 export function AuthShell() {
   const [ready, setReady] = useState(false);
-  const [accessKey, setAccessKey] = useState("");
-  const [name, setName] = useState("My Daymark");
+  const [session, setSession] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => {
-      setAccessKey(localStorage.getItem(KEY_STORAGE) || "");
-      setName(localStorage.getItem(NAME_STORAGE) || "My Daymark");
+      setSession(localStorage.getItem(SESSION_STORAGE) || "");
       setReady(true);
     }, 0);
     return () => window.clearTimeout(initialLoad);
   }, []);
 
-  function signIn(event: FormEvent<HTMLFormElement>) {
+  async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setBusy(true);
+    setError("");
     const form = new FormData(event.currentTarget);
-    const suppliedKey = String(form.get("accessKey") || "").trim();
-    const nextName = String(form.get("name") || "My Daymark").trim().slice(0, 40) || "My Daymark";
-    const nextKey = suppliedKey || newAccessKey();
-    if (nextKey.length < 32) return;
-    localStorage.setItem(KEY_STORAGE, nextKey);
-    localStorage.setItem(NAME_STORAGE, nextName);
-    setName(nextName);
-    setAccessKey(nextKey);
+    try {
+      const response = await fetch(`${API_BASE}/login`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          username: String(form.get("username") || ""),
+          password: String(form.get("password") || ""),
+        }),
+      });
+      if (!response.ok) throw new Error("Incorrect username or password.");
+      const result = await response.json() as { token: string };
+      localStorage.setItem(SESSION_STORAGE, result.token);
+      setSession(result.token);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not sign in.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function signOut() {
-    localStorage.removeItem(KEY_STORAGE);
-    setAccessKey("");
+    localStorage.removeItem(SESSION_STORAGE);
+    setSession("");
   }
 
   if (!ready) return null;
-  if (accessKey) return <Dashboard user={{ name }} accessKey={accessKey} onSignOut={signOut} />;
+  if (session) return <Dashboard user={{ name: "Liquify" }} session={session} onSignOut={signOut} />;
 
   return (
     <main className="login-shell">
@@ -60,21 +67,19 @@ export function AuthShell() {
         <p className="login-copy">One clear promise. One honest check-in. Every day.</p>
         <form className="device-login" onSubmit={signIn}>
           <label>
-            Your name
-            <input name="name" type="text" maxLength={40} defaultValue="My Daymark" />
+            Username
+            <input name="username" type="text" autoComplete="username" defaultValue="Liquify" required />
           </label>
-          <details>
-            <summary>Use an existing account key</summary>
-            <label>
-              Account key
-              <input name="accessKey" type="password" minLength={32} autoComplete="off" />
-            </label>
-          </details>
-          <button className="primary-button login-button" type="submit">
+          <label>
+            Password
+            <input name="password" type="password" autoComplete="current-password" required />
+          </label>
+          {error && <div className="login-error" role="alert">{error}</div>}
+          <button className="primary-button login-button" type="submit" disabled={busy}>
             Enter Daymark <span aria-hidden="true">→</span>
           </button>
         </form>
-        <p className="privacy-note">Private by default · Stored securely in Turso</p>
+        <p className="privacy-note">Single private account · Stored securely in Turso</p>
       </section>
     </main>
   );
