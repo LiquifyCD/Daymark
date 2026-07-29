@@ -29,6 +29,8 @@ type InstallPrompt = Event & {
 
 const EMPTY_STATE: ApiState = { habits: [], checkins: [], today: "" };
 const ICONS = ["💧", "✦", "☀️", "🌿", "📖", "🏃"];
+const API_BASE = "https://daymark-api.liquifycd.workers.dev";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 function dayLabel(date: Date) {
   return new Intl.DateTimeFormat("en", { weekday: "short" }).format(date).slice(0, 2);
@@ -55,7 +57,15 @@ function getStreak(checkins: Checkin[], habitId: number, today: string) {
   return streak;
 }
 
-export function Dashboard({ user }: { user: { name: string; email: string } }) {
+export function Dashboard({
+  user,
+  accessKey,
+  onSignOut,
+}: {
+  user: { name: string };
+  accessKey: string;
+  onSignOut: () => void;
+}) {
   const [data, setData] = useState<ApiState>(EMPTY_STATE);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -67,10 +77,15 @@ export function Dashboard({ user }: { user: { name: string; email: string } }) {
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
     [],
   );
+  const apiFetch = useCallback((path: string, init?: RequestInit) => {
+    const headers = new Headers(init?.headers);
+    headers.set("x-daymark-key", accessKey);
+    return fetch(`${API_BASE}${path}`, { ...init, headers });
+  }, [accessKey]);
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch(`/api/habits?tz=${encodeURIComponent(timezone)}`);
+      const response = await apiFetch(`/habits?tz=${encodeURIComponent(timezone)}`);
       if (!response.ok) throw new Error("Could not load your promises.");
       setData(await response.json());
       setError("");
@@ -79,7 +94,7 @@ export function Dashboard({ user }: { user: { name: string; email: string } }) {
     } finally {
       setLoading(false);
     }
-  }, [timezone]);
+  }, [apiFetch, timezone]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => void load(), 0);
@@ -106,7 +121,7 @@ export function Dashboard({ user }: { user: { name: string; email: string } }) {
     setError("");
     const method = done ? "DELETE" : "POST";
     try {
-      const response = await fetch(`/api/habits/${habit.id}/checkins`, {
+      const response = await apiFetch(`/habits/${habit.id}/checkins`, {
         method,
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ timezone }),
@@ -123,7 +138,7 @@ export function Dashboard({ user }: { user: { name: string; email: string } }) {
   async function createHabit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/habits", {
+    const response = await apiFetch("/habits", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -142,7 +157,7 @@ export function Dashboard({ user }: { user: { name: string; email: string } }) {
 
   async function archiveHabit(id: number) {
     if (!window.confirm("Archive this promise? Its history will be kept.")) return;
-    const response = await fetch(`/api/habits/${id}`, { method: "DELETE" });
+    const response = await apiFetch(`/habits/${id}`, { method: "DELETE" });
     if (!response.ok) {
       setError("The promise could not be archived.");
       return;
@@ -160,6 +175,10 @@ export function Dashboard({ user }: { user: { name: string; email: string } }) {
     setShowInstall(true);
   }
 
+  async function copyAccountKey() {
+    await navigator.clipboard.writeText(accessKey);
+  }
+
   const week = Array.from({ length: 7 }, (_, index) => {
     const date = new Date();
     date.setDate(date.getDate() - (6 - index));
@@ -172,7 +191,7 @@ export function Dashboard({ user }: { user: { name: string; email: string } }) {
       <div className="ambient-orb ambient-orb-two" />
       <header className="topbar">
         <div className="brand-lockup">
-          <img src="/icons/icon-192.png" alt="" />
+          <img src={`${basePath}/icons/icon-192.png`} alt="" />
           <span>Daymark</span>
         </div>
         <button className="install-button" type="button" onClick={install}>
@@ -275,9 +294,12 @@ export function Dashboard({ user }: { user: { name: string; email: string } }) {
             <div className="avatar">{user.name.slice(0, 1).toUpperCase()}</div>
             <div>
               <strong>{user.name}</strong>
-              <span>{user.email}</span>
+              <span>Private Turso profile</span>
             </div>
-            <a href="/signout-with-chatgpt?return_to=%2F">Sign out</a>
+            <div className="identity-actions">
+              <button className="text-button" type="button" onClick={copyAccountKey}>Copy key</button>
+              <button className="text-button" type="button" onClick={onSignOut}>Sign out</button>
+            </div>
           </div>
         </aside>
       </section>
@@ -320,7 +342,7 @@ export function Dashboard({ user }: { user: { name: string; email: string } }) {
           <section className="modal-sheet install-sheet" role="dialog" aria-modal="true" aria-labelledby="install-title" onMouseDown={(event) => event.stopPropagation()}>
             <div className="sheet-handle" />
             <button className="close-button" type="button" aria-label="Close" onClick={() => setShowInstall(false)}>×</button>
-            <img src="/icons/apple-touch-icon.png" alt="" />
+            <img src={`${basePath}/icons/apple-touch-icon.png`} alt="" />
             <p className="eyebrow">INSTALL ON IPHONE</p>
             <h2 id="install-title">Keep Daymark on your Home Screen</h2>
             <ol>

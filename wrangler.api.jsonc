@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "daymark-api",
+  "main": "api/worker.ts",
+  "compatibility_date": "2026-07-29",
+  "vars": {
+    "TURSO_DATABASE_URL": "libsql://daymark-liquifycd.aws-eu-west-1.turso.io"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

@@ -2,9 +2,9 @@
   "name": "Daymark — Daily check-ins",
   "short_name": "Daymark",
   "description": "Make a daily promise and mark it done.",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "id": "/Daymark/",
+  "start_url": "/Daymark/",
+  "scope": "/Daymark/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "portrait-primary",
@@ -13,19 +13,19 @@
   "categories": ["lifestyle", "productivity", "health"],
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/Daymark/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/Daymark/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-maskable-512.png",
+      "src": "/Daymark/icons/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

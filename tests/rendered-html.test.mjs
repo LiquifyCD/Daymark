@@ -2,41 +2,40 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("contains the signed-out Daymark experience", async () => {
-  const [page, layout, css] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+test("contains the device-private Daymark login", async () => {
+  const [auth, layout, css] = await Promise.all([
+    readFile(new URL("../app/auth-shell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
   assert.match(layout, /Daymark — Daily check-ins/);
-  assert.match(page, /Keep your word/);
-  assert.match(page, /Sign in to Daymark/);
-  assert.match(page, /launch-background\.mp4/);
+  assert.match(auth, /Keep your word/);
+  assert.match(auth, /Enter Daymark/);
+  assert.match(auth, /launch-background\.mp4/);
+  assert.match(auth, /crypto\.getRandomValues/);
   assert.match(css, /font-size:\s*16px/);
-  assert.doesNotMatch(`${page}${layout}`, /codex-preview|react-loading-skeleton/i);
 });
 
-test("ships an installable manifest and versioned offline shell", async () => {
+test("ships a GitHub Pages PWA with a versioned offline shell", async () => {
   const manifest = JSON.parse(await readFile(new URL("../public/manifest.webmanifest", import.meta.url)));
   const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
+  const config = await readFile(new URL("../next.config.ts", import.meta.url), "utf8");
   assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.start_url, "/Daymark/");
   assert.equal(manifest.icons.at(-1).purpose, "maskable");
-  assert.match(sw, /daymark-shell-v2/);
-  assert.match(sw, /\/api\//);
-  assert.doesNotMatch(sw, /cache\.put\("\/"/);
+  assert.match(sw, /daymark-shell-v3/);
+  assert.match(config, /output:\s*"export"/);
 });
 
-test("enforces per-user, per-day check-ins with Turso", async () => {
-  const [schema, checkinRoute, database, hosting] = await Promise.all([
-    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
-    readFile(new URL("../app/api/habits/[id]/checkins/route.ts", import.meta.url), "utf8"),
-    readFile(new URL("../db/index.ts", import.meta.url), "utf8"),
-    readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
+test("keeps Turso behind a separate owner-isolated API", async () => {
+  const [worker, dashboard, workflow] = await Promise.all([
+    readFile(new URL("../api/worker.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../.github/workflows/pages.yml", import.meta.url), "utf8"),
   ]);
-  assert.match(schema, /checkins_habit_day_unique/);
-  assert.match(checkinRoute, /eq\(habits\.owner,\s*user\.email\)/);
-  assert.match(checkinRoute, /onConflictDoNothing/);
-  assert.match(database, /@libsql\/client\/web/);
-  assert.match(database, /TURSO_DATABASE_URL/);
-  assert.equal(JSON.parse(hosting).d1, null);
+  assert.match(worker, /TURSO_AUTH_TOKEN/);
+  assert.match(worker, /crypto\.subtle\.digest\("SHA-256"/);
+  assert.match(worker, /ON CONFLICT\(habit_id, checked_on\) DO NOTHING/);
+  assert.match(dashboard, /daymark-api\.liquifycd\.workers\.dev/);
+  assert.match(workflow, /actions\/deploy-pages@v4/);
 });

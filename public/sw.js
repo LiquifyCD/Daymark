@@ -1,12 +1,13 @@
-const CACHE = "daymark-shell-v2";
+const CACHE = "daymark-shell-v3";
+const BASE = "/Daymark";
 const SHELL = [
-  "/offline.html",
-  "/manifest.webmanifest",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/icons/apple-touch-icon.png",
-  "/media/launch-poster.jpg",
-  "/media/launch-background.mp4"
+  `${BASE}/offline.html`,
+  `${BASE}/manifest.webmanifest`,
+  `${BASE}/icons/icon-192.png`,
+  `${BASE}/icons/icon-512.png`,
+  `${BASE}/icons/apple-touch-icon.png`,
+  `${BASE}/media/launch-poster.jpg`,
+  `${BASE}/media/launch-background.mp4`
 ];
 
 self.addEventListener("install", (event) => {
@@ -25,11 +26,11 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-  if (event.request.method !== "GET" || url.pathname.startsWith("/api/")) return;
+  if (event.request.method !== "GET" || url.origin !== self.location.origin) return;
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
-        .catch(() => caches.match("/offline.html")),
+        .catch(() => caches.match(`${BASE}/offline.html`)),
     );
     return;
   }

@@ -1,32 +1,25 @@
 # Daymark
 
-A private, iPhone-ready daily check-in app. Create a promise such as “Drink one
-cup of water”, mark it complete once per local day, and follow your streak.
+An iPhone-ready daily check-in PWA hosted on GitHub Pages.
 
-**Live app:** https://daymark-daily.alfed-v-bergstrand.chatgpt.site
+**Live app:** https://liquifycd.github.io/Daymark/
 
-## Features
+## Architecture
 
-- ChatGPT sign-in with server-side owner checks
-- Turso-hosted SQL storage through Drizzle ORM
-- one check-in per promise and calendar day
-- seven-day rhythm, streaks, and safe archiving
-- installable PWA with Apple touch icons and offline fallback
-- responsive purple No-Comment login experience
+- GitHub Pages hosts the static purple No-Comment app.
+- A small Cloudflare Worker provides the API.
+- Turso stores promises and check-ins.
+- A random account key is hashed before it is used as the database owner ID.
+- The Turso token stays in the Worker and is never shipped to the browser.
 
-## Local setup
+The account key can be copied from the profile card and reused on another device.
 
-Requirements: Node.js 22.13 or newer and a Turso database.
+## Local development
 
 ```powershell
-Copy-Item .env.example .env
 npm.cmd install
-npm.cmd run db:migrate
 npm.cmd run dev
 ```
-
-Set `TURSO_DATABASE_URL` and a database-scoped `TURSO_AUTH_TOKEN` in `.env`.
-Never commit that file.
 
 ## Verification
 
@@ -35,7 +28,3 @@ npm.cmd test
 npx.cmd tsc --noEmit
 npm.cmd audit --omit=dev --audit-level=high
 ```
-
-GitHub stores the source and history. The running full-stack app is deployed
-through OpenAI Sites because GitHub Pages cannot run its authenticated API
-routes.
