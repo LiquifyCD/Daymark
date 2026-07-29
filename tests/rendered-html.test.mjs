@@ -14,6 +14,8 @@ test("contains the single-user Daymark login", async () => {
   assert.match(auth, /launch-background\.mp4/);
   assert.match(auth, /defaultValue="Liquify"/);
   assert.match(auth, /current-password/);
+  assert.match(auth, /autoPlay/);
+  assert.match(auth, /video\.play\(\)/);
   assert.match(css, /font-size:\s*16px/);
 });
 

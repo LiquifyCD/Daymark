@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Dashboard } from "./dashboard";
 
 const SESSION_STORAGE = "daymark-session";
@@ -12,6 +12,7 @@ export function AuthShell() {
   const [session, setSession] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => {
@@ -20,6 +21,17 @@ export function AuthShell() {
     }, 0);
     return () => window.clearTimeout(initialLoad);
   }, []);
+
+  useEffect(() => {
+    if (!ready || session) return;
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = true;
+    const play = () => void video.play().catch(() => undefined);
+    play();
+    video.addEventListener("canplay", play, { once: true });
+    return () => video.removeEventListener("canplay", play);
+  }, [ready, session]);
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,7 +68,17 @@ export function AuthShell() {
 
   return (
     <main className="login-shell">
-      <video className="login-video" muted loop playsInline preload="metadata" poster={`${basePath}/media/launch-poster.jpg`} aria-hidden="true">
+      <video
+        ref={videoRef}
+        className="login-video"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        poster={`${basePath}/media/launch-poster.jpg`}
+        aria-hidden="true"
+      >
         <source src={`${basePath}/media/launch-background.mp4`} type="video/mp4" />
       </video>
       <div className="video-shade" />

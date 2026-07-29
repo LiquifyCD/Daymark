@@ -8,8 +8,6 @@ export function PwaBoot() {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register(`${basePath}/sw.js`, { scope: `${basePath}/` }).catch(() => undefined);
     }
-    const video = document.querySelector<HTMLVideoElement>(".login-video");
-    video?.play().catch(() => undefined);
   }, []);
   return null;
 }
